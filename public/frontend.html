@@ -1,0 +1,12 @@
+
+<form id="myForm">
+    <input type="text" id="msg" placeholder="Enter your message">
+    <button type="submit">Submit</button>
+</form>
+<script>
+    document.getElementById('myForm').addEventListener('submit', function(event) {
+        event.preventDefault(); // Prevent form submission
+        var msg = document.getElementById('msg').value;
+        alert('Hello, ' + msg);
+    });
+</script>
