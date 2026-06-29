@@ -1,12 +1,28 @@
-
 <form id="myForm">
-    <input type="text" id="msg" placeholder="Enter your message">
-    <button type="submit">Submit</button>
+  <input type="text" id="msg" placeholder="Enter your message">
+  <button type="submit">Submit</button>
 </form>
+
 <script>
-    document.getElementById('myForm').addEventListener('submit', function(event) {
-        event.preventDefault(); // Prevent form submission
-        var msg = document.getElementById('msg').value;
-        alert('Hello, ' + msg);
+  document.getElementById('myForm').addEventListener('submit', async function(event) {
+    event.preventDefault();
+
+    const msg = document.getElementById('msg').value;
+    const api_path = window.location.origin + "/message";
+
+    const response = await fetch(api_path, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ message: msg }),
     });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log("Server response:", data);
+    } else {
+      console.error("Request failed:", response.status);
+    }
+  });
 </script>
