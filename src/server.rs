@@ -3,6 +3,9 @@ use std::fs::File;
 use std::path::Path;
 use std::io::Read;
 
+use crate::json::get_from_json;
+
+
 // Wrappers arround tiny_http::Request
 pub trait RequestExt {
     fn serve_file(self, path: &str, content_type: &str);
@@ -19,6 +22,7 @@ impl RequestExt for Request {
             tiny_http::Header::from_bytes("Content-Type", content_type)
              .expect("Uncorrect header")
         );
+
         self.respond_with(response);
     }
 
@@ -37,3 +41,24 @@ impl RequestExt for Request {
     }
 }
 
+pub fn handle_msg_api(mut request: Request){
+    let mut req_body = String::new();
+    let req_as_reader = request.as_reader();
+    match req_as_reader.read_to_string(&mut req_body){
+        Ok(_t) => {},
+        Err(e) => eprintln!("ERROR (api): {e}"),
+    };
+
+    match get_from_json(req_body){
+        Some(t) => {
+            println!("MESSAGE: {message}", message = t.message);
+            let response = Response::empty(200);
+            request.respond_with(response);
+        }
+        None => {
+            eprintln!("ERROR: Bad request body");
+            let response = Response::empty(400);
+            request.respond_with(response);
+        }
+    };
+}

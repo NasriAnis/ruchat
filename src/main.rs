@@ -1,7 +1,8 @@
-use tiny_http::{Server, Response, Method};
+use tiny_http::{Server, Method};
+use crate::server::{RequestExt, handle_msg_api};
 
+pub mod json;
 mod server;
-use crate::server::RequestExt;
 
 fn main() {
     let address = "0.0.0.0:2020";
@@ -14,7 +15,7 @@ fn main() {
     };
     println!("Server listenning at {address} ...");
     loop {
-        let mut request = match server.recv() {
+        let request = match server.recv() {
             Ok(rq) => rq,
             Err(e) => {
                 eprintln!("ERROR: {}", e);
@@ -35,15 +36,7 @@ fn main() {
                 request.serve_file("public/frontend.html", "text/html; charset=utf-8")
             }
             ("/message", Method::Post) => {
-                let req_as_reader = request.as_reader();
-                let mut req_body = String::new();
-                match req_as_reader.read_to_string(&mut req_body){
-                    Ok(_t) => println!("Data: {req_body}"),
-                    Err(e) => eprintln!("ERROR (api): {e}"),
-                };
-
-                let response = Response::empty(200);
-                request.respond_with(response);
+                handle_msg_api(request);
             }
             _ => {
                 request.serve_404();
