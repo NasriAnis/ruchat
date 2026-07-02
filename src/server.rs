@@ -11,6 +11,7 @@ pub trait RequestExt {
     fn serve_file(self, path: &str, content_type: &str);
     fn serve_404(self);
     fn respond_with<R: Read>(self, response: Response<R>);
+    fn is_websock_upgrade(&self) -> bool;
 }
 impl RequestExt for Request {
     fn serve_file(self, path: &str, content_type: &str) {
@@ -38,6 +39,20 @@ impl RequestExt for Request {
                 eprintln!("ERROR in responding: {e}");
             }
         };
+    }
+
+    fn is_websock_upgrade(&self) -> bool {
+        let mut is_ws_upgrade = false;
+
+        for h in self.headers() {
+            let field = h.field.as_str().as_str();
+            let value = h.value.as_str();
+            
+            if field.eq_ignore_ascii_case("Upgrade") && value.eq_ignore_ascii_case("websocket") {
+                is_ws_upgrade = true;
+            }
+        }
+        return is_ws_upgrade;
     }
 }
 
