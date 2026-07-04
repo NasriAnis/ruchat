@@ -1,10 +1,8 @@
-use tiny_http::{Request, Response, Header};
-use tungstenite::protocol::WebSocket;
+use tiny_http::{Request, Response};
 
 use std::fs::File;
 use std::path::Path;
 use std::io::Read;
-use std::thread;
 
 use crate::json::get_from_json;
 
@@ -14,7 +12,7 @@ pub trait RequestExt {
     fn serve_file(self, path: &str, content_type: &str);
     fn serve_404(self);
     fn respond_with<R: Read>(self, response: Response<R>);
-    fn is_websock_upgrade(&self) -> bool;
+    // fn is_websock_upgrade(&self) -> bool;
 }
 impl RequestExt for Request {
     fn serve_file(self, path: &str, content_type: &str) {
@@ -44,19 +42,19 @@ impl RequestExt for Request {
         };
     }
 
-    fn is_websock_upgrade(&self) -> bool {
-        let mut is_ws_upgrade = false;
+    // fn is_websock_upgrade(&self) -> bool {
+    //     let mut is_ws_upgrade = false;
 
-        for h in self.headers() {
-            let field = h.field.as_str().as_str();
-            let value = h.value.as_str();
+    //     for h in self.headers() {
+    //         let field = h.field.as_str().as_str();
+    //         let value = h.value.as_str();
             
-            if field.eq_ignore_ascii_case("Upgrade") && value.eq_ignore_ascii_case("websocket") {
-                is_ws_upgrade = true;
-            }
-        }
-        return is_ws_upgrade;
-    }
+    //         if field.eq_ignore_ascii_case("Upgrade") && value.eq_ignore_ascii_case("websocket") {
+    //             is_ws_upgrade = true;
+    //         }
+    //     }
+    //     return is_ws_upgrade;
+    // }
 }
 
 pub fn handle_msg_api(mut request: Request){
@@ -79,67 +77,4 @@ pub fn handle_msg_api(mut request: Request){
             request.respond_with(response);
         }
     };
-}
-
-pub fn handle_websocket(request: Request) {
-    // Check for the key
-    let mut sec_websocket_key = None;
-    for h in request.headers() {
-        let field = h.field.as_str().as_str();
-        let value = h.value.as_str();
-            
-        if field.eq_ignore_ascii_case("Sec-WebSocket-Key") {
-            sec_websocket_key = Some(value.trim().to_string());
-        }
-    }
-
-    // If with key
-    if let Some(key) = sec_websocket_key {
-        let accept_key = tungstenite::handshake::derive_accept_key(key.as_bytes());
-
-        let response = Response::empty(101)
-            .with_header(Header::from_bytes(&b"Upgrade"[..], &b"websocket"[..]).unwrap())
-            .with_header(Header::from_bytes(&b"Connection"[..], &b"Upgrade"[..]).unwrap())
-            .with_header(Header::from_bytes(&b"Sec-WebSocket-Accept"[..], accept_key.as_bytes()).unwrap());
-
-        let stream = request.upgrade("websocket", response);
-
-        ////////////// Thread Block ////////////////
-        thread::spawn(move || {
-            let mut websocket = WebSocket::from_raw_socket(
-                stream, 
-                tungstenite::protocol::Role::Server, 
-                None
-            );
-
-            println!("WEBSOCKET: connection established");
-
-            loop {
-                let msg = match websocket.read() {
-                    Ok(t) => t,
-                    Err(e) => {
-                        eprintln!("WEBSOCKET: session terminated: {}", e);
-                        break;
-                    }
-                };
-
-                if msg.is_text() || msg.is_binary() {
-                    println!("WEBSOCKET: Received: {}", msg);
-                    if let Err(e) = websocket.send(msg) {
-                        eprintln!("WEBSOCKET: Error sending message: {}", e);
-                        break;
-                    }
-                } else if msg.is_close() {
-                    println!("WEBSOCKET: Client closed connection");
-                    break;
-                }
-            }
-        });
-        ////////////////////////////////////////
-
-        // if whithout key
-    } else {
-        let response = Response::empty(400);
-        let _ = request.respond(response);
-    }
 }
