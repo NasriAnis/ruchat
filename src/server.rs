@@ -74,6 +74,12 @@ pub fn run(){
                 ("/chat", Method::Get) => {
                     request.serve_file("public/chatv2.html", "text/html; charset=utf-8");
                 }
+                ("/js/index.js", Method::Get) => {
+                    request.serve_file("public/index.js", "text/javascript; charset=utf-8");
+                }
+                ("/js/chat.js", Method::Get) => {
+                    request.serve_file("public/chat.js", "text/javascript; charset=utf-8");
+                }
                 _ => {
                     request.serve_404();
                 }
