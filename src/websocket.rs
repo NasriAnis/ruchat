@@ -3,7 +3,9 @@ use std::net::{
     TcpListener
 };
 use std::thread;
-use std::sync::mpsc::channel;
+use std::sync::mpsc::{channel, Sender};
+use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
 
 use tungstenite::protocol::{
     WebSocket,
@@ -11,13 +13,25 @@ use tungstenite::protocol::{
 };
 use tungstenite::accept;
 
-pub fn init_websocket() -> Result<(), ()>{
+type Clients = Arc<Mutex<HashMap<u64, Sender<Message>>>>;
 
+
+pub fn websocket(){
+    let clients: Clients = Arc::new(Mutex::new(HashMap::new()));
+    let ws_clients = Arc::clone(&clients);
+    thread::spawn(move ||{
+        init_websocket(ws_clients)
+    });
+}
+
+pub fn init_websocket(clients: Clients) -> Result<(), ()>{
     let address = "0.0.0.0:2121";
     let listener = TcpListener::bind(address).map_err(|err| {
         eprintln!("WEBSOCKET ERROR: binding: {err}")
     })?;
     println!("Websocket listening at {address} ...");
+
+    let mut next_id = 0u64;
 
     for stream in listener.incoming() {
         let stream = match stream {
@@ -27,15 +41,19 @@ pub fn init_websocket() -> Result<(), ()>{
                 continue
             }
         };
-        thread::spawn(||{
-            handle_client(stream);
+        let clients = Arc::clone(&clients);
+        let id = next_id;
+        next_id += 1;
+
+        thread::spawn(move ||{
+            handle_client(stream, clients, id);
         });
 
     };
     Ok(())
 }
 
-pub fn handle_client(stream: TcpStream){
+pub fn handle_client(stream: TcpStream, clients: Clients, id: u64){
     let mut ws_handshake = match accept(stream) {
         Ok(ws) => ws,
         Err(err) => {
@@ -50,9 +68,10 @@ pub fn handle_client(stream: TcpStream){
         tungstenite::protocol::Role::Server,
         None,
     );
-    let (tx, rx) = channel();
+    let (tx, rx) = channel::<Message>();
+    clients.lock().unwrap().insert(id, tx);
 
-    thread::spawn( move ||{
+    thread::spawn(move ||{
         for msgs in rx {
             if ws_write.send(msgs).is_err(){
                 break;
@@ -73,7 +92,10 @@ pub fn handle_client(stream: TcpStream){
 
         if msg.is_text() || msg.is_binary() {
             println!("WEBSOCKET: Received: {}", msg);
-            tx.send(msg).unwrap();
+            let clients_guard = clients.lock().unwrap();
+            for (id, sender) in clients_guard.iter() {
+                    let _ = sender.send(msg.clone());
+            }
         }
         else if msg.is_close() {
             println!("WEBSOCKET: Client closed connection");
@@ -81,4 +103,6 @@ pub fn handle_client(stream: TcpStream){
         }
     }
 
+    clients.lock().unwrap().remove(&id);
+    println!("WEBSOCKET: client {id} removed");
 }

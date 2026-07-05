@@ -5,7 +5,7 @@ use crate::server::{
     // handle_websocket
 };
 
-use crate::websocket::init_websocket;
+use crate::websocket::websocket;
 
 use std::thread;
 
@@ -25,9 +25,7 @@ fn main() {
     };
     println!("Server listening at {address} ...");
 
-    thread::spawn(|| {
-        init_websocket(); 
-    });
+    thread::spawn(|| {websocket(); });
 
     loop {
         let request = match server.recv() {
