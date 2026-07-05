@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ruchat Messages</title>
+    <style>
+      * {
+	  box-sizing: border-box;
+      }
+      html, body {
+	  margin: 0;
+	  padding: 0;
+	  height: 100%;
+	  width: 100%;
+      }
+      body {
+	  font-family: Arial, sans-serif;
+	  background-color: #f0f0f0;
+	  display: flex;
+	  justify-content: center;
+	  align-items: center;
+      }
+
+      .chat-container {
+	  width: 100vw;
+	  height: 100vh;
+	  background-color: white;
+	  border-radius: 0px;
+	  box-shadow: none;
+	  display: flex;
+	  flex-direction: column;
+      }
+
+      .chat-header {
+	  color: white;
+	  padding: 0px;
+	  text-align: center;
+	  flex-shrink: 0;
+      }
+
+      .chat-box {
+	  flex: 1;
+	  padding: 15px;
+	  overflow-y: auto;
+	  background-color: #f9f9f9;
+      }
+
+      .chat-box .message {
+	  margin: 10px 0;
+	  padding: 10px;
+	  border-radius: 5px;
+	  max-width: 80%;
+      }
+
+      .chat-box .user {
+	  background-color: #007bff;
+	  color: white;
+	  text-align: right;
+	  margin-left: auto;
+      }
+
+      .chat-box .bot {
+	  background-color: #e9ecef;
+	  text-align: left;
+      }
+
+      .chat-input {
+	  display: flex;
+	  padding: 10px;
+	  border-top: 1px solid #ddd;
+      }
+
+      .chat-input input {
+	  flex: 1;
+	  padding: 10px;
+	  font-size: 16px;
+	  border: 1px solid #ddd;
+	  border-radius: 5px;
+      }
+
+      .chat-input button {
+	  padding: 10px 15px;
+	  margin-left: 10px;
+	  background-color: #007bff;
+	  color: white;
+	  border: none;
+	  border-radius: 5px;
+	  cursor: pointer;
+      }
+
+      .chat-input button:hover {
+	  background-color: #0056b3;
+      }
+
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h2>Converstation</h2>
+        </div>
+        <div class="chat-box" id="chatBox"></div>
+        <div class="chat-input">
+            <input type="text" id="userInput" placeholder="Type your message here...">
+            <button id="sendBtn">Send</button>
+        </div>
+    </div>
+    <script>
+      const websocket = new WebSocket("ws://127.0.0.1:2121");
+      const chatBox = document.getElementById('chatBox');
+      const userInput = document.getElementById('userInput');
+      const sendBtn = document.getElementById('sendBtn');
+
+      function addMessage(message, sender) {
+	  const messageDiv = document.createElement('div');
+	  messageDiv.classList.add('message', sender);
+	  messageDiv.textContent = message;
+	  chatBox.appendChild(messageDiv);
+	  chatBox.scrollTop = chatBox.scrollHeight;
+      }
+
+      function handleUserInput() {
+          const message = {
+              message: userInput.value.trim(),
+          };
+          websocket.send(JSON.stringify(message));
+	  userInput.value = '';
+      }
+
+      sendBtn.addEventListener('click', handleUserInput);
+
+      userInput.addEventListener('keydown', (e) => {
+	  if (e.key === 'Enter') handleUserInput();
+      });
+
+      websocket.addEventListener("error", (e) => {
+          console.log(`ERROR`);
+      });
+
+      websocket.addEventListener("message", (e) => {
+	  const data = JSON.parse(e.data);
+	  addMessage(data.message, 'bot');
+      });
+
+    </script>
+</body>
+</html>

@@ -43,10 +43,10 @@ fn main() {
 
         match (request.url(), request.method()) {
             ("/", Method::Get) => {
-                request.serve_file("public/index.html", "text/html; charset=utf-8");
+                request.serve_file("public/indexv2.html", "text/html; charset=utf-8");
             }
             ("/chat", Method::Get) => {
-                request.serve_file("public/chat.html", "text/html; charset=utf-8");
+                request.serve_file("public/chatv2.html", "text/html; charset=utf-8");
             }
             ("/api/message", Method::Post) => {
                 handle_msg_api(request);
