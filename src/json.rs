@@ -8,11 +8,11 @@ pub struct Body {
 }
 
 pub fn get_from_json(json: String) -> Option<Body> {
-    match serde_json::from_str(&json){
+    match serde_json::from_str(&json) {
         Ok(t) => return Some(t),
-        Err(_e) => {
-            // eprintln!("ERROR : {e}");
-            return None
-        },
+        Err(e) => {
+            eprintln!("JSON ERROR : {e}");
+            return None;
+        }
     };
 }

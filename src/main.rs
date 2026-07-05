@@ -2,12 +2,9 @@ use tiny_http::{Server, Method};
 use crate::server::{
     RequestExt,
     handle_msg_api,
-    // handle_websocket
 };
 
 use crate::websocket::websocket;
-
-use std::thread;
 
 pub mod json;
 mod websocket;
@@ -25,7 +22,7 @@ fn main() {
     };
     println!("Server listening at {address} ...");
 
-    thread::spawn(|| {websocket(); });
+    websocket();
 
     loop {
         let request = match server.recv() {
