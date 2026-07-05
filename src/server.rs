@@ -1,13 +1,12 @@
-use tiny_http::{Request, Response};
+use tiny_http::{Request, Response, Server, Method};
 
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-
-use crate::json::get_from_json;
+use std::thread;
 
 // Wrappers arround tiny_http::Request
-pub trait RequestExt {
+trait RequestExt {
     fn serve_file(self, path: &str, content_type: &str);
     fn serve_404(self);
     fn respond_with<R: Read>(self, response: Response<R>);
@@ -39,24 +38,46 @@ impl RequestExt for Request {
     }
 }
 
-pub fn handle_msg_api(mut request: Request) {
-    let mut req_body = String::new();
-    let req_as_reader = request.as_reader();
-    match req_as_reader.read_to_string(&mut req_body) {
-        Ok(_t) => {}
-        Err(e) => eprintln!("ERROR (api): {e}"),
+pub fn run(){
+    let address = "0.0.0.0:2020";
+    let server = match Server::http(address) {
+        Ok(t) => t,
+        Err(e) => {
+            eprintln!("ERROR: {e}");
+            panic!();
+        }
     };
+    println!("Server listening at {address} ...");
+    
+    thread::spawn(move || {
+        loop {
+            let request = match server.recv() {
+                Ok(rq) => rq,
+                Err(e) => {
+                    eprintln!("ERROR: {}", e);
+                    continue;
+                }
+            };
+            println!("RECEIVED: from {remote_address} with {method} at {url}",
+                remote_address = match request.remote_addr(){
+                    Some(t) => t.to_string(),
+                    None => "unknown".to_string(),
+                },
+                method = request.method(),
+                url = request.url(),
+            );
 
-    match get_from_json(req_body) {
-        Some(t) => {
-            println!("MESSAGE: {message}", message = t.message);
-            let response = Response::empty(200);
-            request.respond_with(response);
-        }
-        None => {
-            eprintln!("ERROR: Bad request body");
-            let response = Response::empty(400);
-            request.respond_with(response);
-        }
-    };
+            match (request.url(), request.method()) {
+                ("/", Method::Get) => {
+                    request.serve_file("public/indexv2.html", "text/html; charset=utf-8");
+                }
+                ("/chat", Method::Get) => {
+                    request.serve_file("public/chatv2.html", "text/html; charset=utf-8");
+                }
+                _ => {
+                    request.serve_404();
+                }
+            }
+        };
+    });
 }

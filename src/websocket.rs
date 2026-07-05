@@ -9,13 +9,13 @@ use tungstenite::protocol::{Message, WebSocket};
 
 type Clients = Arc<Mutex<HashMap<u64, Sender<Message>>>>;
 
-pub fn websocket() {
+pub fn run() {
     let clients: Clients = Arc::new(Mutex::new(HashMap::new()));
     let ws_clients = Arc::clone(&clients);
     thread::spawn(move || init_websocket(ws_clients));
 }
 
-pub fn init_websocket(clients: Clients) -> Result<(), ()> {
+fn init_websocket(clients: Clients) -> Result<(), ()> {
     let address = "0.0.0.0:2121";
     let listener =
         TcpListener::bind(address).map_err(|err| eprintln!("WEBSOCKET ERROR: binding: {err}"))?;
@@ -42,7 +42,7 @@ pub fn init_websocket(clients: Clients) -> Result<(), ()> {
     Ok(())
 }
 
-pub fn handle_client(stream: TcpStream, clients: Clients, id: u64) {
+fn handle_client(stream: TcpStream, clients: Clients, id: u64) {
     let mut ws_handshake = match accept(stream) {
         Ok(ws) => ws,
         Err(err) => {
@@ -50,6 +50,7 @@ pub fn handle_client(stream: TcpStream, clients: Clients, id: u64) {
             return;
         }
     };
+    println!("WEBSOCKET: new connection");
 
     let write_stream = ws_handshake.get_ref().try_clone().unwrap();
     let mut ws_write =
