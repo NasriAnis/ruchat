@@ -1,42 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <title>RuChat</title>
-  </head>
-  <body>
+    <head>
+        <meta charset="UTF-8">
+        <title>RuChat</title>
+    </head>
+    <body>
 
-    <form id="myForm">
-      <input type="text" id="msg" placeholder="Enter your message">
-      <button type="submit">Submit</button>
-    </form>
+        <form id="myForm">
+            <input type="text" id="msg" placeholder="Enter your message">
+            <button type="submit">Submit</button>
+        </form>
 
-    <script>
-      // Web socket creation
-      const websocket = new WebSocket("ws://127.0.0.1:2121");
+        <script>
+        // Web socket creation
+        const websocket = new WebSocket("ws://127.0.0.1:2121");
 
-      websocket.addEventListener("error", (e) => {
-	console.log(`ERROR`);
-      });
+        websocket.addEventListener("error", (e) => {
+            console.log(`ERROR`);
+        });
 
-      // Ping the server every 10s
-      // websocket.addEventListener("open", () => {
-      // 	console.log("CONNECTED");
-      // 	pingInterval = setInterval(() => {
-      // 	    console.log(`SENT: ping`);
-      // 	    websocket.send("ping");
-      // 	}, 30000);
-      // });
+        websocket.addEventListener("message", (e) => {
+            console.log(`RECEIVED: ${e.data}`);
+        });
 
-      document.getElementById('myForm').addEventListener('submit', async function(event) {
-      event.preventDefault();
+        document.getElementById('myForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
 
-	const msg = document.getElementById('msg').value;
-	const message = {
-	    message: msg,
-	};
-	websocket.send(JSON.stringify(message));
-      });
-    </script>
-  </body>
+            const msg = document.getElementById('msg').value;
+            const message = {
+                message: msg,
+            };
+            websocket.send(JSON.stringify(message));
+        });
+        </script>
+    </body>
 </html>
+
