@@ -10,7 +10,7 @@ use std::thread;
 // Wrappers arround tiny_http::Request
 trait RequestExt {
     fn serve_file(self, path: &str, content_type: &str);
-    fn serve_404(self);
+    fn serve(self, statuscode: u16);
     fn respond_with<R: Read>(self, response: Response<R>);
     fn handle_signup(self, db: &sled::Db);
 }
@@ -26,8 +26,8 @@ impl RequestExt for Request {
         self.respond_with(response);
     }
 
-    fn serve_404(self) {
-        let response = Response::empty(404);
+    fn serve(self, statuscode: u16) {
+        let response = Response::empty(statuscode);
         self.respond_with(response);
     }
 
@@ -56,8 +56,7 @@ impl RequestExt for Request {
         };
         let _ = register_user(&db, user_info); // todo: need handle
 
-        let response = Response::empty(200);
-        self.respond_with(response);
+        self.serve(200);
     }
 }
 
@@ -100,10 +99,10 @@ pub fn run(){
             match (request.url(), request.method()) {
                 // Endpoints
                 ("/", Method::Get) => {
-                    request.serve_file("public/indexv2.html", "text/html; charset=utf-8");
+                    request.serve_file("public/index.html", "text/html; charset=utf-8");
                 }
                 ("/chat", Method::Get) => {
-                    request.serve_file("public/chatv2.html", "text/html; charset=utf-8");
+                    request.serve_file("public/chat.html", "text/html; charset=utf-8");
                 }
                 ("/login", Method::Get) => {
                     request.serve_file("public/login.html", "text/html; charset=utf-8");
@@ -122,18 +121,18 @@ pub fn run(){
 
                 // Javascript serve
                 ("/js/index.js", Method::Get) => {
-                    request.serve_file("public/index.js", "text/javascript; charset=utf-8");
+                    request.serve_file("public/js/index.js", "text/javascript; charset=utf-8");
                 }
                 ("/js/chat.js", Method::Get) => {
-                    request.serve_file("public/chat.js", "text/javascript; charset=utf-8");
+                    request.serve_file("public/js/chat.js", "text/javascript; charset=utf-8");
                 }
                 ("/js/register.js", Method::Get) => {
-                    request.serve_file("public/register.js", "text/javascript; charset=utf-8");
+                    request.serve_file("public/js/register.js", "text/javascript; charset=utf-8");
                 }
 
                 // Unkhown endpoint
                 _ => {
-                    request.serve_404();
+                    request.serve(404);
                 }
             }
         };
