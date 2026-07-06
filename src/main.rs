@@ -1,3 +1,4 @@
+pub mod database;
 pub mod json;
 mod websocket;
 mod server;
