@@ -1,4 +1,5 @@
-const websocket = new WebSocket("ws://192.168.1.65:2121");
+const wsurl = "ws://" + window.location.hostname + ":2121"
+const websocket = new WebSocket(wsurl);
 const chatBox = document.getElementById('chatBox');
 const userInput = document.getElementById('userInput');
 const sendBtn = document.getElementById('sendBtn');
