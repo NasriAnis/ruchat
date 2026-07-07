@@ -4,6 +4,8 @@ This is RuChat a rust based web server that uses websockets for real time commun
 Endpoints:
 1. `/`: Entry point
 2. `/chat`: Chat page
+3. `/login`: Login page
+4. `/register`: Registring page
 
 ### Usage
 To use the project just clone the repository and build it via cargo in release mode :
