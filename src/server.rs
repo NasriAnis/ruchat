@@ -1,5 +1,5 @@
 use tiny_http::{Request, Response, Server, Method};
-use crate::database::{self, register_user};
+use crate::database::{self, register_user, check_login};
 use crate::json;
 
 use std::fs::File;
@@ -13,6 +13,7 @@ trait RequestExt {
     fn serve(self, statuscode: u16);
     fn respond_with<R: Read>(self, response: Response<R>);
     fn handle_signup(self, db: &sled::Db);
+    fn handle_login(self, db: &sled::Db);
 }
 
 impl RequestExt for Request {
@@ -50,13 +51,43 @@ impl RequestExt for Request {
         let user_info = match json::user_from_json(req_body){
             Some(t) => t,
             None => {
-                eprintln!("SIGN-IN API: request body error"); // todo: need handle
+                eprintln!("REGISTER API: request body error"); // todo: need handle
                 return;
             }
         };
         let _ = register_user(&db, user_info); // todo: need handle
 
         self.serve(200);
+    }
+
+    fn handle_login(mut self, db: &sled::Db){
+        let mut req_body = String::new();
+        let req_as_reader = self.as_reader();
+        match req_as_reader.read_to_string(&mut req_body){
+            Ok(_t) => {},
+            Err(e) => eprintln!("ERROR (api): {e}"),
+        };
+        let user_info = match json::user_from_json(req_body){
+            Some(t) => t,
+            None => {
+                eprintln!("LOGIN API: request body error"); // todo: need handle
+                return;
+            }
+        };
+        let is_loged = match check_login(&db, &user_info.username, &user_info.password){
+            Ok(t) => t,
+            Err(e) => {
+                eprintln!("DATABASE GET ERROR: {e}");
+                self.serve(500);
+                return
+            }
+        };
+
+        if is_loged {
+            self.serve(200)
+        } else {
+            self.serve(400) // todo: Need proper error handling
+        }
     }
 }
 
@@ -113,7 +144,7 @@ pub fn run(){
 
                 // APIs
                 ("/api/login", Method::Post) => {
-                    todo!();
+                    request.handle_login(&db);
                 }
                 ("/api/register", Method::Post) => {
                     request.handle_signup(&db);
@@ -128,6 +159,9 @@ pub fn run(){
                 }
                 ("/js/register.js", Method::Get) => {
                     request.serve_file("public/js/register.js", "text/javascript; charset=utf-8");
+                }
+                ("/js/login.js", Method::Get) => {
+                    request.serve_file("public/js/login.js", "text/javascript; charset=utf-8");
                 }
 
                 // Unkhown endpoint
