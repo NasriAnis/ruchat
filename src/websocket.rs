@@ -76,7 +76,7 @@ fn handle_client(stream: TcpStream, clients: Clients, id: u64) {
                 break;
             }
         };
-        // println!("WEBSOCKET: new session");
+        println!("WEBSOCKET: new session");
 
         if msg.is_text() || msg.is_binary() {
             // println!("WEBSOCKET: Received: {}", msg);
@@ -85,11 +85,11 @@ fn handle_client(stream: TcpStream, clients: Clients, id: u64) {
                 let _ = sender.send(msg.clone());
             }
         } else if msg.is_close() {
-            // println!("WEBSOCKET: Client closed connection");
+            println!("WEBSOCKET: Client closed connection");
             break;
         }
     }
 
     clients.lock().unwrap().remove(&id);
-    // println!("WEBSOCKET: client {id} removed");
+    println!("WEBSOCKET: client {id} removed");
 }

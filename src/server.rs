@@ -1,4 +1,5 @@
 use tiny_http::{Request, Response, Server, Method};
+
 use crate::database::{self, register_user, check_login};
 use crate::json;
 
@@ -12,8 +13,9 @@ trait RequestExt {
     fn serve_file(self, path: &str, content_type: &str);
     fn serve(self, statuscode: u16);
     fn respond_with<R: Read>(self, response: Response<R>);
-    fn handle_signup(self, db: &sled::Db);
+    fn handle_register(self, db: &sled::Db);
     fn handle_login(self, db: &sled::Db);
+    fn get_body(&mut self) -> Result<String, std::io::Error>;
 }
 
 impl RequestExt for Request {
@@ -41,39 +43,64 @@ impl RequestExt for Request {
         };
     }
 
-    fn handle_signup(mut self, db: &sled::Db){
+    fn get_body(&mut self) -> Result<String, std::io::Error> {
         let mut req_body = String::new();
         let req_as_reader = self.as_reader();
         match req_as_reader.read_to_string(&mut req_body){
-            Ok(_t) => {},
-            Err(e) => eprintln!("ERROR (api): {e}"),
+            Ok(_t) => {
+                return Ok(req_body);
+            },
+            Err(e) => {
+                eprintln!("ERROR (api): {e}");
+                return Err(e);
+            },
         };
-        let user_info = match json::user_from_json(req_body){
-            Some(t) => t,
-            None => {
-                eprintln!("REGISTER API: request body error"); // todo: need handle
+    }
+
+    fn handle_register(mut self, db: &sled::Db){
+        let req_body = match self.get_body(){
+            Ok(t) => t,
+            Err(_e) => {
+                self.serve(500);
                 return;
             }
         };
-        let _ = register_user(&db, user_info); // todo: need handle
 
-        self.serve(200);
+        let user: database::User = Default::default();
+        let user_info = match json::json_from_slice(user, &req_body.into_bytes()){
+            Ok(t) => t,
+            Err(e) => {
+                eprintln!("Register JSON API: request body error: {e}");
+                self.serve(400);
+                return;
+            }
+        };
+
+        match register_user(&db, user_info){
+            Ok(_) => self.serve(200),
+            Err(_) => self.serve(500),
+        };
     }
 
     fn handle_login(mut self, db: &sled::Db){
-        let mut req_body = String::new();
-        let req_as_reader = self.as_reader();
-        match req_as_reader.read_to_string(&mut req_body){
-            Ok(_t) => {},
-            Err(e) => eprintln!("ERROR (api): {e}"),
-        };
-        let user_info = match json::user_from_json(req_body){
-            Some(t) => t,
-            None => {
-                eprintln!("LOGIN API: request body error"); // todo: need handle
+        let req_body = match self.get_body(){
+            Ok(t) => t,
+            Err(_e) => {
+                self.serve(500);
                 return;
             }
         };
+
+        let user: database::User = Default::default();
+        let user_info = match json::json_from_slice(user, &req_body.into_bytes()){
+            Ok(t) => t,
+            Err(e) => {
+                eprintln!("LOGIN JSON API: request body error: {e}");
+                self.serve(400);
+                return;
+            }
+        };
+
         let is_loged = match check_login(&db, &user_info.username, &user_info.password){
             Ok(t) => t,
             Err(e) => {
@@ -86,13 +113,13 @@ impl RequestExt for Request {
         if is_loged {
             self.serve(200)
         } else {
-            self.serve(400) // todo: Need proper error handling
+            self.serve(401)
         }
     }
 }
 
 pub fn run(){
-    let db = match database::init("/tmp/db"){
+    let db = match database::init("./db"){
         Ok(t) => t,
         Err(e) => {
             eprintln!("DATABASE: Failed to open database: {e}");
@@ -147,7 +174,7 @@ pub fn run(){
                     request.handle_login(&db);
                 }
                 ("/api/register", Method::Post) => {
-                    request.handle_signup(&db);
+                    request.handle_register(&db);
                 }
 
                 // Javascript serve

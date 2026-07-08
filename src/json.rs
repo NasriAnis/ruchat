@@ -1,30 +1,9 @@
-use serde::{Deserialize, Serialize};
-use crate::database::User;
+use serde::Deserialize;
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Body {
-    pub message: String,
-    // TODO : Implement token for each use
-    // pub token: String,
-}
-
-pub fn get_from_json(json: String) -> Option<Body> {
-    match serde_json::from_str(&json) {
-        Ok(t) => return Some(t),
-        Err(e) => {
-            eprintln!("JSON ERROR : {e}");
-            return None;
-        }
+pub fn json_from_slice<'a, T: Deserialize<'a>>(_t: T, json: &'a [u8]) -> Result<T, serde_json::Error> {
+    let t = match serde_json::from_slice(json){
+        Ok(t) => t,
+        Err(e) => return Err(e),
     };
-}
-
-// Function for deconstructing User struct at database::User
-pub fn user_from_json(json: String) -> Option<User> {
-    match serde_json::from_str(&json) {
-        Ok(t) => return Some(t),
-        Err(e) => {
-            eprintln!("JSON ERROR : {e}");
-            return None;
-        }
-    };
+    Ok(t)
 }
