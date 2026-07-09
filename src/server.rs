@@ -12,20 +12,38 @@ use std::thread;
 trait RequestExt {
     fn serve_file(self, path: &str, content_type: &str);
     fn serve(self, statuscode: u16);
+    fn serve_cookie(self, cookie: String);
+    // fn serve_bytes(self, data: &[u8], content_type: &str);
+    fn get_body(&mut self) -> Result<String, std::io::Error>;
     fn respond_with<R: Read>(self, response: Response<R>);
     fn handle_register(self, db: &sled::Db);
     fn handle_login(self, db: &sled::Db);
-    fn get_body(&mut self) -> Result<String, std::io::Error>;
 }
 
 impl RequestExt for Request {
     fn serve_file(self, path: &str, content_type: &str) {
-        let mut response =
-            Response::from_file(File::open(Path::new(path)).expect("File to server not found"));
-        response = response.with_header(
-            tiny_http::Header::from_bytes("Content-Type", content_type).expect("Uncorrect header"),
-        );
+        let response =
+            Response::from_file(File::open(Path::new(path)) .expect("File to server not found"))
+                .with_header(
+                    tiny_http::Header::from_bytes("Content-Type", content_type) .expect("Uncorrect header"),
+                );
 
+        self.respond_with(response);
+    }
+
+    // fn serve_bytes(self, data: &[u8], content_type: &str) {
+    //     let response = Response::from_data(data)
+    //         .with_header(
+    //             tiny_http::Header::from_bytes("Content-Type", content_type) .expect("Uncorrect header"),
+    //         );
+    //     self.respond_with(response);
+    // }
+
+    fn serve_cookie(self, cookie: String) {
+        let response = Response::empty(200)
+            .with_header(
+                tiny_http::Header::from_bytes("Cookie", cookie).expect("Uncorrect header"),
+            );
         self.respond_with(response);
     }
 
@@ -111,7 +129,9 @@ impl RequestExt for Request {
         };
 
         if is_loged {
-            self.serve(200)
+            // todo: improve cookies, This is experimental
+            let cookie: String = format!("{}@{}", user_info.username, user_info.password);
+            self.serve_cookie(cookie);
         } else {
             self.serve(401)
         }
