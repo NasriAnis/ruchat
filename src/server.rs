@@ -130,7 +130,7 @@ impl RequestExt for Request {
 
         if is_loged {
             // todo: improve cookies, This is experimental
-            let cookie: String = format!("{}@{}", user_info.username, user_info.password);
+            let cookie: String = format!("authToken={}@{}", user_info.username, user_info.password);
             self.serve_cookie(cookie);
         } else {
             self.serve(401)
