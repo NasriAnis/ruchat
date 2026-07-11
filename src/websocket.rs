@@ -4,10 +4,11 @@ use std::sync::mpsc::{Sender, channel};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use tungstenite::accept;
+use tungstenite::accept_hdr;
+use tungstenite::handshake::server::{Request, Response};
 use tungstenite::protocol::{Message, WebSocket};
 
-type Clients = Arc<Mutex<HashMap<u64, Sender<Message>>>>;
+type Clients = Arc<Mutex<HashMap<String, Sender<Message>>>>;
 
 pub fn run() {
     let clients: Clients = Arc::new(Mutex::new(HashMap::new()));
@@ -21,7 +22,6 @@ fn init_websocket(clients: Clients) -> Result<(), ()> {
         TcpListener::bind(address).map_err(|err| eprintln!("WEBSOCKET ERROR: binding: {err}"))?;
     println!("Websocket listening at {address} ...");
 
-    let mut next_id = 0u64;
 
     for stream in listener.incoming() {
         let stream = match stream {
@@ -31,32 +31,61 @@ fn init_websocket(clients: Clients) -> Result<(), ()> {
                 continue;
             }
         };
+
+        println!("Stream: {stream:?}");
+
         let clients = Arc::clone(&clients);
-        let id = next_id;
-        next_id += 1;
 
         thread::spawn(move || {
-            handle_client(stream, clients, id);
+            handle_client(stream, clients);
         });
     }
     Ok(())
 }
 
-fn handle_client(stream: TcpStream, clients: Clients, id: u64) {
-    let mut ws_handshake = match accept(stream) {
+fn handle_client(stream: TcpStream, clients: Clients) {
+    let mut auth_token: Option<String> = None;
+
+    let callback = |req: &Request, response: Response| {
+        if let Some(cookie_header) = req.headers().get("Cookie") {
+            if let Ok(cookie_str) = cookie_header.to_str() {
+                auth_token = cookie_str
+                    .split(';')
+                    .map(|kv| kv.trim())
+                    .find_map(|kv| {
+                        let mut parts = kv.splitn(2, '=');
+                        let k = parts.next()?;
+                        let v = parts.next()?;
+                        (k == "authToken").then(|| v.to_string())
+                    });
+            }
+        }
+        Ok(response)
+    };
+
+    let mut ws_handshake = match accept_hdr(stream, callback) {
         Ok(ws) => ws,
         Err(err) => {
             eprintln!("WEBSOCKET HANDSHAKE ERROR: {err}");
             return;
         }
     };
-    println!("WEBSOCKET: new connection");
+
+    let auth_token = match auth_token {
+        Some(t) => t,
+        None => {
+            eprintln!("WEBSOCKET ERROR: cookie not sent");
+            return
+        },
+    };
+
+    println!("WEBSOCKET: new connection, auth_token = {auth_token:?}");
 
     let write_stream = ws_handshake.get_ref().try_clone().unwrap();
     let mut ws_write =
         WebSocket::from_raw_socket(write_stream, tungstenite::protocol::Role::Server, None);
     let (tx, rx) = channel::<Message>();
-    clients.lock().unwrap().insert(id, tx);
+    clients.lock().unwrap().insert(auth_token.clone(), tx);
 
     thread::spawn(move || {
         for msgs in rx {
@@ -82,6 +111,7 @@ fn handle_client(stream: TcpStream, clients: Clients, id: u64) {
             // println!("WEBSOCKET: Received: {}", msg);
             let clients_guard = clients.lock().unwrap();
             for (_id, sender) in clients_guard.iter() {
+                println!("WEBSOCKET MESSAGE: {msg:?}");
                 let _ = sender.send(msg.clone());
             }
         } else if msg.is_close() {
@@ -90,6 +120,6 @@ fn handle_client(stream: TcpStream, clients: Clients, id: u64) {
         }
     }
 
-    clients.lock().unwrap().remove(&id);
-    println!("WEBSOCKET: client {id} removed");
+    println!("WEBSOCKET: client {auth_token} removed", auth_token = auth_token.clone());
+    clients.lock().unwrap().remove(&auth_token);
 }
