@@ -19,7 +19,6 @@ function getCookie(name) {
   if (parts.length === 2) return parts.pop().split(';').shift();
 }
 
-
 function handleUserInput() {
     const message = {
         message: userInput.value.trim(),
@@ -41,5 +40,9 @@ websocket.addEventListener("error", (e) => {
 
 websocket.addEventListener("message", (e) => {
     const data = JSON.parse(e.data);
-    addMessage(data.message, 'bot');
+    if (data.cookie == getCookie("authToken")){
+	addMessage(data.message, 'user');
+    } else {
+	addMessage(data.message, 'bot');
+    }
 });
