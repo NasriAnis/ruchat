@@ -83,7 +83,7 @@ impl RequestExt for Request {
                 return;
             }
         };
-
+        
         let user: database::User = Default::default();
         let user_info = match json::json_from_slice(user, &req_body.into_bytes()){
             Ok(t) => t,
@@ -139,7 +139,7 @@ impl RequestExt for Request {
 }
 
 pub fn run(){
-    let db = match database::init("./db"){
+    let db = match database::init("db"){
         Ok(t) => t,
         Err(e) => {
             eprintln!("DATABASE: Failed to open database: {e}");
