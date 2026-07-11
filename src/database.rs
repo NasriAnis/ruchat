@@ -16,7 +16,7 @@ pub fn init(path: &str) -> Result<sled::Db, sled::Error> {
 }
 
 // todo: Not quite happy of this function may need ameliorations about error handling
-pub fn register_user(db: &sled::Db, user: User) -> Result<(), sled::Error> {
+pub fn register_user(db: &sled::Db, user: &User) -> Result<(), sled::Error> {
     let key = format!("user:{}", user.username);
     let value = match serde_json::to_string(&user){
         Ok(s) => s,

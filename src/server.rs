@@ -94,8 +94,12 @@ impl RequestExt for Request {
             }
         };
 
-        match register_user(&db, user_info){
-            Ok(_) => self.serve(200),
+
+        match register_user(&db, &user_info){
+            Ok(_) => {
+                let cookie: String = format!("authToken={}@{}", user_info.username, user_info.password);
+                self.serve_cookie(cookie);
+            },
             Err(_) => self.serve(500),
         };
     }

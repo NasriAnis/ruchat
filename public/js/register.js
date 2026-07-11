@@ -6,7 +6,7 @@ document.getElementById('register form').addEventListener('submit', function(eve
 async function try_login() {
     var username = document.getElementById('username').value;
     var password = document.getElementById('password').value;
-    const url = window.location.origin + "/api/login";
+    const url = window.location.origin + "/api/register";
 
     try{
 	const response = await fetch(url, {
