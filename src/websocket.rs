@@ -93,7 +93,6 @@ fn handle_client(stream: TcpStream, clients: Clients) {
                 eprintln!("WEBSOCKET: Thread cant send message exiting");
                 break;
             };
-            // println!("WEBSOCKET: Sent succesfully");
         }
     });
 
@@ -108,10 +107,8 @@ fn handle_client(stream: TcpStream, clients: Clients) {
         println!("WEBSOCKET: new session");
 
         if msg.is_text() || msg.is_binary() {
-            // println!("WEBSOCKET: Received: {}", msg);
             let clients_guard = clients.lock().unwrap();
             for (_id, sender) in clients_guard.iter() {
-                println!("WEBSOCKET MESSAGE: {msg:?}");
                 let _ = sender.send(msg.clone());
             }
         } else if msg.is_close() {
