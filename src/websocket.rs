@@ -8,15 +8,25 @@ use tungstenite::accept_hdr;
 use tungstenite::handshake::server::{Request, Response};
 use tungstenite::protocol::{Message, WebSocket};
 
-type Clients = Arc<Mutex<HashMap<String, Sender<Message>>>>;
+use serde::{Deserialize, Serialize};
 
-pub fn run() {
-    let clients: Clients = Arc::new(Mutex::new(HashMap::new()));
-    let ws_clients = Arc::clone(&clients);
-    thread::spawn(move || init_websocket(ws_clients));
+use crate::database;
+use crate::json;
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+struct MessageRcv {
+    message: String,
 }
 
-fn init_websocket(clients: Clients) -> Result<(), ()> {
+type Clients = Arc<Mutex<HashMap<String, Sender<Message>>>>;
+
+pub fn run(db_cookies: sled::Db) {
+    let clients: Clients = Arc::new(Mutex::new(HashMap::new()));
+    let ws_clients = Arc::clone(&clients);
+    thread::spawn(move || init_websocket(ws_clients, db_cookies.clone()));
+}
+
+fn init_websocket(clients: Clients, db_cookies: sled::Db) -> Result<(), ()> {
     let address = "0.0.0.0:2121";
     let listener =
         TcpListener::bind(address).map_err(|err| eprintln!("WEBSOCKET ERROR: binding: {err}"))?;
@@ -35,15 +45,16 @@ fn init_websocket(clients: Clients) -> Result<(), ()> {
         println!("Stream: {stream:?}");
 
         let clients = Arc::clone(&clients);
+        let value = db_cookies.clone();
 
         thread::spawn(move || {
-            handle_client(stream, clients);
+            handle_client(stream, clients, value);
         });
     }
     Ok(())
 }
 
-fn handle_client(stream: TcpStream, clients: Clients) {
+fn handle_client(stream: TcpStream, clients: Clients, db_cookies: sled::Db) {
     let mut auth_token: Option<String> = None;
 
     let callback = |req: &Request, response: Response| {
@@ -79,7 +90,21 @@ fn handle_client(stream: TcpStream, clients: Clients) {
         },
     };
 
-    println!("WEBSOCKET: new connection, auth_token = {auth_token:?}");
+    // todo: Need better handling
+    let client_username = match database::get_username_from_cookie(&db_cookies, &auth_token){
+        Ok(t) => match t {
+            Some(u) => u,
+            None => {
+                eprintln!("WEBSOCKET: Cant find corresponding user for this cookie: {auth_token}");
+                return
+            },
+        }
+        Err(e) => {
+            eprintln!("WEBSOCKET ERROR: cheching for database cookies: {e}");
+            return
+        }
+    };
+    println!("WEBSOCKET: new connection, auth_token = {auth_token:?}, username = {client_username}");
 
     let write_stream = ws_handshake.get_ref().try_clone().unwrap();
     let mut ws_write =
@@ -97,7 +122,7 @@ fn handle_client(stream: TcpStream, clients: Clients) {
     });
 
     loop {
-        let msg = match ws_handshake.read() {
+        let msg_recv = match ws_handshake.read() {
             Ok(t) => t,
             Err(e) => {
                 eprintln!("WEBSOCKET: session terminated: {}", e);
@@ -106,12 +131,40 @@ fn handle_client(stream: TcpStream, clients: Clients) {
         };
         println!("WEBSOCKET: new session");
 
-        if msg.is_text() || msg.is_binary() {
+        if msg_recv.is_text() || msg_recv.is_binary() {
+            let mut msg: MessageRcv = Default::default(); 
+            msg = match json::json_from_slice(msg, &msg_recv.into_data()){
+                Ok(t) => t,
+                Err(e) => {
+                    eprintln!("WEBSOCKET ERROR: message deserialize: {e}");
+                    continue;
+                }
+            };
+
+            // send request with username depending of who send it
+            // and if you or another sent it
+            // the javascript will watch for this in the frontend
+            let msg_to_forward_for_recv = Message::text(serde_json::json!({
+                "message": msg.message,
+                "username": client_username,
+            }).to_string());
+
+            let msg_to_forward_for_sender = Message::text(serde_json::json!({
+                "message": msg.message,
+                "username": "You",
+            }).to_string());
+
             let clients_guard = clients.lock().unwrap();
-            for (_id, sender) in clients_guard.iter() {
-                let _ = sender.send(msg.clone());
+
+            for (id, sender) in clients_guard.iter() {
+                // todo: handle the message
+                if id == &auth_token{
+                    let _ = sender.send(msg_to_forward_for_sender.clone());
+                } else {
+                    let _ = sender.send(msg_to_forward_for_recv.clone());
+                }
             }
-        } else if msg.is_close() {
+        } else if msg_recv.is_close() {
             println!("WEBSOCKET: Client closed connection");
             break;
         }

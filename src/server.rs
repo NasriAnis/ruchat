@@ -12,12 +12,12 @@ use std::thread;
 trait RequestExt {
     fn serve_file(self, path: &str, content_type: &str);
     fn serve(self, statuscode: u16);
-    fn serve_cookie(self, cookie: String);
+    fn serve_cookie(self, cookie: &str);
     // fn serve_bytes(self, data: &[u8], content_type: &str);
     fn get_body(&mut self) -> Result<String, std::io::Error>;
     fn respond_with<R: Read>(self, response: Response<R>);
-    fn handle_register(self, db: &sled::Db);
-    fn handle_login(self, db: &sled::Db);
+    fn handle_register(self, db: &database::Databases);
+    fn handle_login(self, db: &database::Databases);
 }
 
 impl RequestExt for Request {
@@ -39,7 +39,7 @@ impl RequestExt for Request {
     //     self.respond_with(response);
     // }
 
-    fn serve_cookie(self, cookie: String) {
+    fn serve_cookie(self, cookie: &str) {
         let response = Response::empty(200)
             .with_header(
                 tiny_http::Header::from_bytes("Cookie", cookie).expect("Uncorrect header"),
@@ -75,7 +75,7 @@ impl RequestExt for Request {
         };
     }
 
-    fn handle_register(mut self, db: &sled::Db){
+    fn handle_register(mut self, dbs: &database::Databases){
         let req_body = match self.get_body(){
             Ok(t) => t,
             Err(_e) => {
@@ -84,8 +84,8 @@ impl RequestExt for Request {
             }
         };
         
-        let user: database::User = Default::default();
-        let user_info = match json::json_from_slice(user, &req_body.into_bytes()){
+        let mut user: database::User = Default::default();
+        user = match json::json_from_slice(user, &req_body.into_bytes()){
             Ok(t) => t,
             Err(e) => {
                 eprintln!("Register JSON API: request body error: {e}");
@@ -95,16 +95,19 @@ impl RequestExt for Request {
         };
 
 
-        match register_user(&db, &user_info){
+        match register_user(&dbs.users, &user){
             Ok(_) => {
-                let cookie: String = format!("authToken={}@{}", user_info.username, user_info.password);
-                self.serve_cookie(cookie);
+                let cookie: String = format!("{}@{}", user.username, user.password);
+                let full_cookie: String = format!("authToken={}", cookie);
+                // todo: this function need handling (Result)
+                let _ = database::save_cookie(&dbs.cookies, &user.username, &cookie);
+                self.serve_cookie(&full_cookie);
             },
             Err(_) => self.serve(500),
         };
     }
 
-    fn handle_login(mut self, db: &sled::Db){
+    fn handle_login(mut self, dbs: &database::Databases){
         let req_body = match self.get_body(){
             Ok(t) => t,
             Err(_e) => {
@@ -113,8 +116,8 @@ impl RequestExt for Request {
             }
         };
 
-        let user: database::User = Default::default();
-        let user_info = match json::json_from_slice(user, &req_body.into_bytes()){
+        let mut user: database::User = Default::default();
+        user = match json::json_from_slice(user, &req_body.into_bytes()){
             Ok(t) => t,
             Err(e) => {
                 eprintln!("LOGIN JSON API: request body error: {e}");
@@ -123,7 +126,7 @@ impl RequestExt for Request {
             }
         };
 
-        let is_loged = match check_login(&db, &user_info.username, &user_info.password){
+        let is_loged = match check_login(&dbs.users, &user.username, &user.password){
             Ok(t) => t,
             Err(e) => {
                 eprintln!("DATABASE GET ERROR: {e}");
@@ -134,22 +137,18 @@ impl RequestExt for Request {
 
         if is_loged {
             // todo: improve cookies, This is experimental
-            let cookie: String = format!("authToken={}@{}", user_info.username, user_info.password);
-            self.serve_cookie(cookie);
+            let cookie: String = format!("{}@{}", user.username, user.password);
+            let full_cookie: String = format!("authToken={}", cookie);
+            // todo: this function need handling (Result)
+            let _ = database::save_cookie(&dbs.cookies, &user.username, &cookie);
+            self.serve_cookie(&full_cookie);
         } else {
             self.serve(401)
         }
     }
 }
 
-pub fn run(){
-    let db = match database::init("db"){
-        Ok(t) => t,
-        Err(e) => {
-            eprintln!("DATABASE: Failed to open database: {e}");
-            panic!();
-        }
-    };
+pub fn run(dbs: database::Databases) {
     let address = "0.0.0.0:2020";
     let server = match Server::http(address) {
         Ok(t) => t,
@@ -195,10 +194,10 @@ pub fn run(){
 
                 // APIs
                 ("/api/login", Method::Post) => {
-                    request.handle_login(&db);
+                    request.handle_login(&dbs);
                 }
                 ("/api/register", Method::Post) => {
-                    request.handle_register(&db);
+                    request.handle_register(&dbs);
                 }
 
                 // Javascript serve

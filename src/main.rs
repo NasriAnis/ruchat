@@ -4,7 +4,8 @@ mod websocket;
 mod server;
 
 fn main() {
-    websocket::run();
-    server::run();
+    let dbs = database::init();
+    server::run(dbs.clone());
+    websocket::run(dbs.cookies);
     std::thread::park();
 }
