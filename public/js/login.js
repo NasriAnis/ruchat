@@ -29,5 +29,6 @@ async function try_login() {
     } catch (error) {
 	console.error(error);
     }
-    
+    document.getElementById('username').value = '';
+    document.getElementById('password').value = '';
 }

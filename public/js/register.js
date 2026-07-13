@@ -1,9 +1,9 @@
 document.getElementById('register form').addEventListener('submit', function(event) {
     event.preventDefault();
-    try_login();
+    try_register();
 });
 
-async function try_login() {
+async function try_register() {
     var username = document.getElementById('username').value;
     var password = document.getElementById('password').value;
     const url = window.location.origin + "/api/register";
@@ -29,5 +29,6 @@ async function try_login() {
     } catch (error) {
 	console.error(error);
     }
-    
+    document.getElementById('username').value = '';
+    document.getElementById('password').value = '';
 }
