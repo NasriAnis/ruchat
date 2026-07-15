@@ -99,9 +99,14 @@ impl RequestExt for Request {
             Ok(_) => {
                 let cookie: String = format!("{}@{}", user.username, user.password);
                 let full_cookie: String = format!("authToken={}", cookie);
-                // todo: this function need handling (Result)
-                let _ = database::save_cookie(&dbs.cookies, &user.username, &cookie);
-                self.serve_cookie(&full_cookie);
+                let _ = match database::save_cookie(&dbs.cookies, &user.username, &cookie){
+                    Ok(_) => self.serve_cookie(&full_cookie),
+                    Err(e) => {
+                        eprintln!("ERROR: Saving cookie: {e}");
+                        self.serve(500);
+                        return
+                    }
+                };
             },
             Err(_) => self.serve(500),
         };
@@ -139,9 +144,14 @@ impl RequestExt for Request {
             // todo: improve cookies, This is experimental
             let cookie: String = format!("{}@{}", user.username, user.password);
             let full_cookie: String = format!("authToken={}", cookie);
-            // todo: this function need handling (Result)
-            let _ = database::save_cookie(&dbs.cookies, &user.username, &cookie);
-            self.serve_cookie(&full_cookie);
+            let _ = match database::save_cookie(&dbs.cookies, &user.username, &cookie){
+                Ok(_) => self.serve_cookie(&full_cookie),
+                Err(e) => {
+                    eprintln!("ERROR: Saving cookie: {e}");
+                    self.serve(500);
+                    return
+                }
+            };
         } else {
             self.serve(401)
         }

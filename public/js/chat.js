@@ -19,6 +19,28 @@ function getCookie(name) {
   if (parts.length === 2) return parts.pop().split(';').shift();
 }
 
+function showPopup(message) {
+    const overlay = document.createElement('div');
+    overlay.classList.add('popup-overlay');
+
+    const box = document.createElement('div');
+    box.classList.add('popup-box');
+
+    const text = document.createElement('p');
+    text.textContent = message;
+
+    const okBtn = document.createElement('button');
+    okBtn.textContent = 'OK';
+    okBtn.addEventListener('click', () => {
+        overlay.remove();
+    });
+
+    box.appendChild(text);
+    box.appendChild(okBtn);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+}
+
 function handleUserInput() {
     const message = {
         message: userInput.value.trim(),
@@ -34,7 +56,14 @@ userInput.addEventListener('keydown', (e) => {
 });
 
 websocket.addEventListener("error", (e) => {
-    console.log(`ERROR`);
+    console.log(e);
+});
+
+websocket.addEventListener("close", (e) => {
+    console.log("Websocket Closed:", e.code, e.reason);
+    if (e.reason) {
+	showPopup(e.reason);
+    }
 });
 
 websocket.addEventListener("message", (e) => {

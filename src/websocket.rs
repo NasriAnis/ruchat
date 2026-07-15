@@ -7,6 +7,7 @@ use std::thread;
 use tungstenite::accept_hdr;
 use tungstenite::handshake::server::{Request, Response};
 use tungstenite::protocol::{Message, WebSocket};
+use tungstenite::protocol::{CloseFrame, frame::coding::CloseCode};
 
 use serde::{Deserialize, Serialize};
 
@@ -19,6 +20,13 @@ struct MessageRcv {
 }
 
 type Clients = Arc<Mutex<HashMap<String, Sender<Message>>>>;
+
+fn close(ws: &mut WebSocket<TcpStream>, reason: &str, code: CloseCode) {
+    ws.close(Some(CloseFrame {
+        code: code,
+        reason: reason.to_string().into(),
+    })).ok();
+}
 
 pub fn run(db_cookies: sled::Db) {
     let clients: Clients = Arc::new(Mutex::new(HashMap::new()));
@@ -86,21 +94,23 @@ fn handle_client(stream: TcpStream, clients: Clients, db_cookies: sled::Db) {
         Some(t) => t,
         None => {
             eprintln!("WEBSOCKET ERROR: cookie not sent");
+            close(&mut ws_handshake, "Please login or register to your account", CloseCode::Error);
             return
         },
     };
 
-    // todo: Need better handling
     let client_username = match database::get_username_from_cookie(&db_cookies, &auth_token){
         Ok(t) => match t {
             Some(u) => u,
             None => {
                 eprintln!("WEBSOCKET: Cant find corresponding user for this cookie: {auth_token}");
+                close(&mut ws_handshake, "please login or register to your account", CloseCode::Error);
                 return
             },
         }
         Err(e) => {
             eprintln!("WEBSOCKET ERROR: cheching for database cookies: {e}");
+            close(&mut ws_handshake, "Websocket error", CloseCode::Error);
             return
         }
     };
