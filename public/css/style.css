@@ -1,0 +1,183 @@
+  * { box-sizing: border-box; }
+  html, body {
+      margin: 0; padding: 0; height: 100%; width: 100%;
+      font-family: Arial, sans-serif;
+  }
+
+  /* ---------- App shell ---------- */
+  .app {
+      height: 100vh; width: 100vw;
+      display: flex; flex-direction: column;
+      background-color: #fff;
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      background-color: #007bff;
+      color: white;
+      flex-shrink: 0;
+  }
+  .brand { font-size: 20px; font-weight: bold; letter-spacing: 0.5px; }
+  .auth-links { display: flex; gap: 10px; }
+  .auth-btn {
+      padding: 7px 16px;
+      font-size: 14px;
+      background-color: white;
+      color: #007bff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+  }
+  .auth-btn:hover { background-color: #e6e6e6; }
+
+  /* ---------- Chat ---------- */
+  .chat-box {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+      background-color: #f9f9f9;
+  }
+  .chat-box .message {
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 5px;
+      max-width: 80%;
+  }
+  .chat-box .user {
+      background-color: #007bff;
+      color: white;
+      text-align: right;
+      margin-left: auto;
+  }
+  .chat-box .bot {
+      background-color: #e9ecef;
+      text-align: left;
+  }
+  .chat-input {
+      display: flex;
+      padding: 10px;
+      border-top: 1px solid #ddd;
+      flex-shrink: 0;
+  }
+  .chat-input input {
+      flex: 1;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+  }
+  .chat-input button {
+      padding: 10px 15px;
+      margin-left: 10px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+  }
+  .chat-input button:hover { background-color: #0056b3; }
+
+  /* ---------- Popup / modal (used for info popups AND auth forms) ---------- */
+  .popup-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+  }
+  .popup-box {
+      background-color: white;
+      padding: 24px;
+      border-radius: 8px;
+      max-width: 360px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      position: relative;
+  }
+  .popup-box p { margin: 0 0 15px 0; color: #333; word-wrap: break-word; }
+  .popup-box button.ok-btn {
+      padding: 8px 20px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+  }
+  .popup-box button.ok-btn:hover { background-color: #0056b3; }
+
+  .popup-close {
+      position: absolute;
+      top: 8px; right: 10px;
+      background: none;
+      border: none;
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      color: #888;
+  }
+  .popup-close:hover { color: #333; }
+
+  .popup-box h2 {
+      margin: 0 0 16px 0;
+      font-size: 18px;
+      color: #222;
+  }
+
+  .auth-form {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+      align-items: center;
+      text-align: left;
+  }
+  .auth-form label { font-size: 14px; color: #333; }
+  .auth-form input[type="text"],
+  .auth-form input[type="password"] {
+      height: 26px;
+      border: 1px solid #999;
+      padding: 2px 6px;
+      font-size: 14px;
+      grid-column: 2;
+  }
+  .auth-form button[type="submit"] {
+      grid-column: 1 / span 2;
+      justify-self: start;
+      margin-top: 6px;
+      padding: 7px 20px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+  }
+  .auth-form button[type="submit"]:hover { background-color: #0056b3; }
+
+  #authStatusMsg {
+      display: none;
+      grid-column: 1 / span 2;
+      font-size: 13px;
+      font-weight: bold;
+  }
+  #authStatusMsg.success { display: block; color: #3fa9f5; }
+  #authStatusMsg.error { display: block; color: #dc3545; }
+
+  .switch-auth {
+      margin-top: 14px;
+      font-size: 13px;
+      color: #555;
+  }
+  .switch-auth a {
+      color: #007bff;
+      cursor: pointer;
+      text-decoration: underline;
+  }

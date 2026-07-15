@@ -1,3 +1,6 @@
+/* ============================================================
+   Chat / websocket
+   ============================================================ */
 const wsurl = "ws://" + window.location.hostname + ":2121"
 const websocket = new WebSocket(wsurl);
 
@@ -11,34 +14,6 @@ function addMessage(message, sender) {
     messageDiv.textContent = message;
     chatBox.appendChild(messageDiv);
     chatBox.scrollTop = chatBox.scrollHeight;
-}
-
-function getCookie(name) {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop().split(';').shift();
-}
-
-function showPopup(message) {
-    const overlay = document.createElement('div');
-    overlay.classList.add('popup-overlay');
-
-    const box = document.createElement('div');
-    box.classList.add('popup-box');
-
-    const text = document.createElement('p');
-    text.textContent = message;
-
-    const okBtn = document.createElement('button');
-    okBtn.textContent = 'OK';
-    okBtn.addEventListener('click', () => {
-        overlay.remove();
-    });
-
-    box.appendChild(text);
-    box.appendChild(okBtn);
-    overlay.appendChild(box);
-    document.body.appendChild(overlay);
 }
 
 function handleUserInput() {
@@ -62,15 +37,15 @@ websocket.addEventListener("error", (e) => {
 websocket.addEventListener("close", (e) => {
     console.log("Websocket Closed:", e.code, e.reason);
     if (e.reason) {
-	showPopup(e.reason);
+        showPopup(e.reason);
     }
 });
 
 websocket.addEventListener("message", (e) => {
     const data = JSON.parse(e.data);
     if (data.username == "You"){
-	addMessage(data.message, 'user');
+        addMessage(data.message, 'user');
     } else {
-	addMessage(data.message, 'bot');
+        addMessage(data.message, 'bot');
     }
 });

@@ -192,15 +192,6 @@ pub fn run(dbs: database::Databases) {
                 ("/", Method::Get) => {
                     request.serve_file("public/index.html", "text/html; charset=utf-8");
                 }
-                ("/chat", Method::Get) => {
-                    request.serve_file("public/chat.html", "text/html; charset=utf-8");
-                }
-                ("/login", Method::Get) => {
-                    request.serve_file("public/login.html", "text/html; charset=utf-8");
-                }
-                ("/register", Method::Get) => {
-                    request.serve_file("public/register.html", "text/html; charset=utf-8");
-                }
 
                 // APIs
                 ("/api/login", Method::Post) => {
@@ -211,17 +202,22 @@ pub fn run(dbs: database::Databases) {
                 }
 
                 // Javascript serve
-                ("/js/index.js", Method::Get) => {
-                    request.serve_file("public/js/index.js", "text/javascript; charset=utf-8");
+                ("/js/ui.js", Method::Get) => {
+                    request.serve_file("public/js/ui.js", "text/javascript; charset=utf-8");
                 }
-                ("/js/chat.js", Method::Get) => {
-                    request.serve_file("public/js/chat.js", "text/javascript; charset=utf-8");
+                ("/js/ws.js", Method::Get) => {
+                    request.serve_file("public/js/ws.js", "text/javascript; charset=utf-8");
                 }
-                ("/js/register.js", Method::Get) => {
-                    request.serve_file("public/js/register.js", "text/javascript; charset=utf-8");
+                ("/js/account.js", Method::Get) => {
+                    request.serve_file("public/js/account.js", "text/javascript; charset=utf-8");
                 }
-                ("/js/login.js", Method::Get) => {
-                    request.serve_file("public/js/login.js", "text/javascript; charset=utf-8");
+                ("/js/cookie.js", Method::Get) => {
+                    request.serve_file("public/js/cookie.js", "text/javascript; charset=utf-8");
+                }
+
+                // CSS serve
+                ("/css/style.css", Method::Get) => {
+                    request.serve_file("public/css/style.css", "text/css; charset=utf-8");
                 }
 
                 // Unkhown endpoint

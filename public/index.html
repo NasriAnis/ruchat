@@ -1,86 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RuChat</title>
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-        html, body {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            width: 100%;
-            font-family: Arial, sans-serif;
-        }
-        body {
-            display: flex;
-        }
-        .sidebar {
-            width: 220px;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: stretch;
-            gap: 10px;
-            padding: 24px 16px;
-            flex-shrink: 0;
-        }
-        .brand {
-            font-size: 22px;
-            font-weight: bold;
-            color: white;
-            letter-spacing: 0.5px;
-            margin-bottom: 10px;
-        }
-        .sidebar-btn {
-            padding: 10px 16px;
-            font-size: 15px;
-            background-color: white;
-            color: #007bff;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            text-align: left;
-        }
-        .main {
-            flex: 1;
-            display: flex;
-            justify-content: flex-end;
-            align-items: flex-start;
-            padding: 16px 24px;
-        }
-        .auth-links {
-            display: flex;
-            gap: 10px;
-        }
-        .auth-btn {
-            padding: 8px 18px;
-            font-size: 15px;
-            background-color: white;
-            color: #007bff;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-    </style>
-</head>
-<body>
-    <div class="sidebar">
-        <span class="brand">RuChat</span>
-        <button class="sidebar-btn" onclick="redirect_chat()">Go to chats</button>
-        <!-- add more sidebar buttons below this one -->
+    <link rel="stylesheet" href="/css/style.css">
+  </head>
+  <body>
+    <div class="app">
+      <div class="topbar">
+	<span class="brand">RuChat</span>
+	<div class="auth-links" id="authLinks">
+	  <!-- filled in by checkAuth() -->
+	</div>
+      </div>
+
+      <div class="chat-box" id="chatBox"></div>
+      <div class="chat-input">
+	<input type="text" id="userInput" placeholder="Type your message here...">
+	<button id="sendBtn">Send</button>
+      </div>
     </div>
-    <div class="main">
-        <div class="auth-links" id="authLinks">
-            <button class="auth-btn" onclick="redirect_login()">Login</button>
-            <button class="auth-btn" onclick="redirect_register()">Register</button>
-        </div>
-    </div>
-    <script src="/js/index.js"></script>
-</body>
+
+    <script src="/js/ui.js"></script>
+    <script src="/js/ws.js"></script>
+    <script src="/js/account.js"></script>
+    <script src="/js/cookie.js"></script>
+  </body>
 </html>
