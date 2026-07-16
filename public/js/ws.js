@@ -1,7 +1,7 @@
 /* ============================================================
    Chat / websocket
    ============================================================ */
-const wsurl = "ws://" + window.location.hostname + ":2121"
+const wsurl = "wss://" + window.location.hostname + ":2121"
 const websocket = new WebSocket(wsurl);
 
 const chatBox = document.getElementById('chatBox');

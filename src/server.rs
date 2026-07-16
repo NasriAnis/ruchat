@@ -1,4 +1,4 @@
-use tiny_http::{Request, Response, Server, Method};
+use tiny_http::{SslConfig, Request, Response, Server, Method};
 
 use crate::database::{self, register_user, check_login};
 use crate::json;
@@ -158,9 +158,9 @@ impl RequestExt for Request {
     }
 }
 
-pub fn run(dbs: database::Databases) {
+pub fn run(dbs: database::Databases, cert_pem: Vec<u8>, key_pem: Vec<u8>) {
     let address = "0.0.0.0:2020";
-    let server = match Server::http(address) {
+    let server = match Server::https(address, SslConfig {certificate: cert_pem, private_key: key_pem}) {
         Ok(t) => t,
         Err(e) => {
             eprintln!("ERROR: {e}");
