@@ -10,8 +10,8 @@ use rustls::{ServerConfig, ServerConnection, StreamOwned};
 
 use tungstenite::accept_hdr;
 use tungstenite::handshake::server::{Request, Response};
-use tungstenite::protocol::{Message, WebSocket};
 use tungstenite::protocol::{CloseFrame, frame::coding::CloseCode};
+use tungstenite::protocol::{Message, WebSocket};
 
 use serde::{Deserialize, Serialize};
 
@@ -26,19 +26,16 @@ struct MessageRcv {
 type Clients = Arc<Mutex<HashMap<String, Sender<Message>>>>;
 type TlsStream = StreamOwned<ServerConnection, TcpStream>;
 
-// How long a blocking read() call waits before giving the writer thread
-// a chance to grab the lock. Lower = snappier outgoing messages, more CPU.
 const READ_TIMEOUT: Duration = Duration::from_millis(200);
 
 fn close(ws: &mut WebSocket<TlsStream>, reason: &str, code: CloseCode) {
     ws.close(Some(CloseFrame {
         code,
         reason: reason.to_string().into(),
-    })).ok();
+    }))
+    .ok();
 }
 
-/// True if this tungstenite error is just "no data within the read timeout" —
-/// i.e. not a real failure, just our cue to loop back and check for outgoing messages.
 fn is_timeout(err: &tungstenite::Error) -> bool {
     matches!(
         err,
@@ -53,7 +50,11 @@ pub fn run(db_cookies: sled::Db, rustls_config: Arc<ServerConfig>) {
     thread::spawn(move || init_websocket(ws_clients, db_cookies.clone(), rustls_config));
 }
 
-fn init_websocket(clients: Clients, db_cookies: sled::Db, rustls_config: Arc<ServerConfig>) -> Result<(), ()> {
+fn init_websocket(
+    clients: Clients,
+    db_cookies: sled::Db,
+    rustls_config: Arc<ServerConfig>,
+) -> Result<(), ()> {
     let address = "0.0.0.0:2121";
     let listener =
         TcpListener::bind(address).map_err(|err| eprintln!("WEBSOCKET ERROR: binding: {err}"))?;
@@ -73,9 +74,6 @@ fn init_websocket(clients: Clients, db_cookies: sled::Db, rustls_config: Arc<Ser
         let rustls_config = Arc::clone(&rustls_config);
 
         thread::spawn(move || {
-            // No read timeout yet — let the TLS + WS handshake run as a normal
-            // blocking call. We apply the timeout afterwards, only for the
-            // message loop, where we need to periodically release the lock.
             let conn = match ServerConnection::new(rustls_config) {
                 Ok(c) => c,
                 Err(e) => {
@@ -97,22 +95,17 @@ fn handle_client(stream: TlsStream, clients: Clients, db_cookies: sled::Db) {
     let callback = |req: &Request, response: Response| {
         if let Some(cookie_header) = req.headers().get("Cookie") {
             if let Ok(cookie_str) = cookie_header.to_str() {
-                auth_token = cookie_str
-                    .split(';')
-                    .map(|kv| kv.trim())
-                    .find_map(|kv| {
-                        let mut parts = kv.splitn(2, '=');
-                        let k = parts.next()?;
-                        let v = parts.next()?;
-                        (k == "authToken").then(|| v.to_string())
-                    });
+                auth_token = cookie_str.split(';').map(|kv| kv.trim()).find_map(|kv| {
+                    let mut parts = kv.splitn(2, '=');
+                    let k = parts.next()?;
+                    let v = parts.next()?;
+                    (k == "authToken").then(|| v.to_string())
+                });
             }
         }
         Ok(response)
     };
 
-    // Plain blocking handshake — no read timeout is set yet, so this behaves
-    // exactly like the TCP-only version: it waits as long as it needs to.
     let mut ws_handshake = match accept_hdr(stream, callback) {
         Ok(ws) => ws,
         Err(err) => {
@@ -121,10 +114,11 @@ fn handle_client(stream: TlsStream, clients: Clients, db_cookies: sled::Db) {
         }
     };
 
-    // Now that the handshake is done, apply the read timeout for the message
-    // loop below — this is what lets the reader release the mutex periodically
-    // so the writer thread can get in.
-    if let Err(e) = ws_handshake.get_ref().sock.set_read_timeout(Some(READ_TIMEOUT)) {
+    if let Err(e) = ws_handshake
+        .get_ref()
+        .sock
+        .set_read_timeout(Some(READ_TIMEOUT))
+    {
         eprintln!("WEBSOCKET ERROR: setting read timeout: {e}");
         return;
     }
@@ -133,7 +127,11 @@ fn handle_client(stream: TlsStream, clients: Clients, db_cookies: sled::Db) {
         Some(t) => t,
         None => {
             eprintln!("WEBSOCKET ERROR: cookie not sent");
-            close(&mut ws_handshake, "Please login or register to your account", CloseCode::Error);
+            close(
+                &mut ws_handshake,
+                "Please login or register to your account",
+                CloseCode::Error,
+            );
             return;
         }
     };
@@ -143,7 +141,11 @@ fn handle_client(stream: TlsStream, clients: Clients, db_cookies: sled::Db) {
             Some(u) => u,
             None => {
                 eprintln!("WEBSOCKET: Cant find corresponding user for this cookie: {auth_token}");
-                close(&mut ws_handshake, "please login or register to your account", CloseCode::Error);
+                close(
+                    &mut ws_handshake,
+                    "please login or register to your account",
+                    CloseCode::Error,
+                );
                 return;
             }
         },
@@ -153,7 +155,9 @@ fn handle_client(stream: TlsStream, clients: Clients, db_cookies: sled::Db) {
             return;
         }
     };
-    println!("WEBSOCKET: new connection, auth_token = {auth_token:?}, username = {client_username}");
+    println!(
+        "WEBSOCKET: new connection, auth_token = {auth_token:?}, username = {client_username}"
+    );
 
     let mut ws = ws_handshake;
 
@@ -183,23 +187,30 @@ fn handle_client(stream: TlsStream, clients: Clients, db_cookies: sled::Db) {
         };
 
         if msg_recv.is_text() || msg_recv.is_binary() {
-            let msg: MessageRcv = match json::json_from_slice(Default::default(), &msg_recv.into_data()) {
-                Ok(t) => t,
-                Err(e) => {
-                    eprintln!("WEBSOCKET ERROR: message deserialize: {e}");
-                    continue;
-                }
-            };
+            let msg: MessageRcv =
+                match json::json_from_slice(Default::default(), &msg_recv.into_data()) {
+                    Ok(t) => t,
+                    Err(e) => {
+                        eprintln!("WEBSOCKET ERROR: message deserialize: {e}");
+                        continue;
+                    }
+                };
 
-            let msg_to_forward_for_recv = Message::text(serde_json::json!({
-                "message": msg.message,
-                "username": client_username,
-            }).to_string());
+            let msg_to_forward_for_recv = Message::text(
+                serde_json::json!({
+                    "message": msg.message,
+                    "username": client_username,
+                })
+                .to_string(),
+            );
 
-            let msg_to_forward_for_sender = Message::text(serde_json::json!({
-                "message": msg.message,
-                "username": "You",
-            }).to_string());
+            let msg_to_forward_for_sender = Message::text(
+                serde_json::json!({
+                    "message": msg.message,
+                    "username": "You",
+                })
+                .to_string(),
+            );
 
             let clients_guard = clients.lock().unwrap();
 
